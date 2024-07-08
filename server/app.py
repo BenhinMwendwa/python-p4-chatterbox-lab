@@ -18,8 +18,7 @@ db.init_app(app)
 def messages():
     if request.method == 'GET':
         messages = Message.query.order_by('created_at').all()
-        
-        return make_response([message.to_dict() for message in messages],200 )
+        return make_response(jsonify([message.to_dict() for message in messages]), 200)
     
     elif request.method == 'POST':
         data = request.get_json()
@@ -27,38 +26,30 @@ def messages():
             body=data['body'],
             username=data['username']
         )
-
         db.session.add(message)
         db.session.commit()
+        return make_response(jsonify(message.to_dict()), 201)
 
-        return  make_response(message.to_dict(),  201,)
-        return make_response(message.to_dict(),201)
-@app.route('/messages/<int:id>')
-def messages_by_id(id):
-    message=Message.query.filter_by(id=id).first()
-    if request.method == 'PATCH':
-        data=request.get_json()
+@app.route('/messages/<int:id>', methods=['GET', 'PATCH', 'DELETE'])
+def message_by_id(id):
+    message = Message.query.get(id)
+    if not message:
+        return make_response(jsonify({"error": "Message not found"}), 404)
+
+    if request.method == 'GET':
+        return make_response(jsonify(message.to_dict()), 200)
+
+    elif request.method == 'PATCH':
+        data = request.get_json()
         for attr in data:
             setattr(message, attr, data[attr])
-        db.session.add(message)
         db.session.commit()
-        
-        return make_response(message.to_dict(),200)
+        return make_response(jsonify(message.to_dict()), 200)
     
     elif request.method == 'DELETE':
         db.session.delete(message)
         db.session.commit()
-
-        return make_response( {'deleted': True} , 200)
-@app.route('/messages/<int:id>', methods=['DELETE'])
-def delete_message(id):
-    message = Message.query.get(id)
-    if not message:
-        return "failed",(404)
-    db.session.delete(message)
-    db.session.commit()
-    return jsonify({'message': 'Message deleted successfully'})
-
+        return make_response(jsonify({'message': 'Message deleted successfully'}), 200)
 
 if __name__ == '__main__':
     app.run(port=5555)
